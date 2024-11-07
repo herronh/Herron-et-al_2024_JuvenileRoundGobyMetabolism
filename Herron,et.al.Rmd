@@ -1,0 +1,1030 @@
+Temperature- and ontogeny-dependent metabolism in invasive early juvenile round goby (Neogobius melanostomus)
+Herron, H., Zarini, S., Thompson, W. A., Turko, A., & Balshine, S. Submitted September 1st, 2024
+
+This first chunk installs all necessary packages needed for statistical analysis and/or graphical representations, and should always be ran FIRST.
+
+```{r Install/load packages}
+install.packages("lme4")
+library(lme4) # for linear mixed effect modelling
+
+install.packages("lmerTest")
+library(lmerTest) # for linear mixed effect modelling 
+
+install.packages("emmeans")
+library(patchwork) # for graphical representations 
+
+install.packages("ggplot2")
+library(ggplot2) # for graphical representations
+
+install.packages("tidyr")
+library(tidyr)
+
+install.packages("rcompanion")
+library(rcompanion) # for Schearer Ray Hare test
+
+install.packages("patchwork")
+library(patchwork) # for combining individual plots/panels into one figure
+
+install.packages("RColorBrewer")
+library(RColorBrewer) # for graphical representations 
+
+# Additional packages (still must check if all are still used)
+install.packages("dplyr")
+install.packages("reshape2")
+install.packages("ggpubr")
+install.packages("PMCMRplus")
+install.packages("rstatix")
+install.packages("ggplotify")
+install.packages("ggforce")
+install.packages("dunn.test")
+install.packages("Matrix")
+
+library(ggplot2)
+library(dplyr)
+library(ggplotify)
+library(reshape2)
+library(ggpubr)
+library(ggforce)
+library(dunn.test)
+library(Matrix)
+```
+
+This chunk will import the data set ("data"), and create subsets for usable data "data2" is filtered to remove any instances where the RMR is lower than the MMR (an impossibility) From here, all subsets are created using data2: data2_1 is all 6-7 week old juveniles data2_2 is all 12-14 week old juveniles deg[x] is all ages where temperature was [x]°C deg[x]\_[y] is where temperature was [x]°C and age was [y] (1 denotes 6-7 weeks, 2 denotes 12-14 weeks) IMPORTANT NOTE: this chunk MUST be ran prior to any other chunk henceforth (i.e. run this SECOND)
+
+```{r Initialization}
+data<-read.csv(("C:\\Users\\hunte\\OneDrive\\Documents\\JuveRGResp.csv"))
+# uploads the data file 
+
+data2 <- subset(data, AS_Analysis == "include")
+# AS_Analysis checks to see if RMR is greater than MMR, and if it is, it excludes that data point 
+
+# converts oxygen units of (mg O2) into (umol O2)
+data2$absoluteMMR_umolO2_h <- data2$absoluteMMR_mgO2_h * 31.25
+data2$absoluteRMR_umolO2_h <- data2$absoluteRMR_mgO2_h * 31.25
+data2$absoluteAS_umolO2_h <- data2$absoluteMMR_umolO2_h - data2$absoluteRMR_umolO2_h
+
+data2_1 <- subset(data2, Age == "1")
+# Creates a subset for Age1 juveniles (6-7 weeks)
+
+data2_2 <- subset(data2, Age == "2")
+# Creates a subset for Age2 juveniles (12-14 weeks)
+
+deg15 <- subset(data2, Temp == "15")
+deg19 <- subset(data2, Temp == "19")
+deg23 <- subset(data2, Temp == "23")
+deg27 <- subset(data2, Temp == "27")
+# creates subsets for each temperature
+
+deg15_1 <- subset(deg15, Age == "1")
+deg15_2 <- subset(deg15, Age == "2")
+deg19_1 <- subset(deg19, Age == "1")
+deg19_2 <- subset(deg19, Age == "2")
+deg23_1 <- subset(deg23, Age == "1")
+deg23_2 <- subset(deg23, Age == "2")
+deg27_1 <- subset(deg27, Age == "1")
+deg27_2 <- subset(deg27, Age == "2")
+# creates a subset for each age & temperature
+
+data2$Age <- as.factor(data2$Age)
+data2$Temp <- as.factor(data2$Temp)
+# ensures age and temperature are treated as factors 
+```
+
+Figure 1a stats Effect of temperature on mass between ages Tests for normality Two-way ANOVA (mass \~ Temp \* Age) Tukey Post-hoc
+
+```{r Figure }
+# first check for normality in mass measurements 
+# first test normality of mass across temperatures 
+deg15_1_AvgMass_SW <- shapiro.test(deg15_1$AvgMass)
+print(deg15_1_AvgMass_SW) # p = 0.2802
+deg15_2_AvgMass_SW <- shapiro.test(deg15_2$AvgMass)
+print(deg15_2_AvgMass_SW) # p = 0.618
+deg19_1_AvgMass_SW <- shapiro.test(deg19_1$AvgMass)
+print(deg19_1_AvgMass_SW) # p = 0.2487
+deg19_2_AvgMass_SW <- shapiro.test(deg19_2$AvgMass)
+print(deg19_2_AvgMass_SW) # p = 0.6543
+deg23_1_AvgMass_SW <- shapiro.test(deg23_1$AvgMass)
+print(deg23_1_AvgMass_SW) # p = 0.2233
+deg23_2_AvgMass_SW <- shapiro.test(deg23_2$AvgMass)
+print(deg23_2_AvgMass_SW) # p = 0.4284
+deg27_1_AvgMass_SW <- shapiro.test(deg27_1$AvgMass)
+print(deg27_1_AvgMass_SW) # p = 0.0004917 
+deg27_2_AvgMass_SW <- shapiro.test(deg27_2$AvgMass)
+print(deg27_2_AvgMass_SW) # p = 0.2045
+
+# transform the data; test if log10 transformation creates normally distributed data 
+# Apply log10 transformation to AvgMass
+deg15_1$log_AvgMass <- log10(deg15_1$AvgMass)
+deg15_2$log_AvgMass <- log10(deg15_2$AvgMass)
+deg19_1$log_AvgMass <- log10(deg19_1$AvgMass)
+deg19_2$log_AvgMass <- log10(deg19_2$AvgMass)
+deg23_1$log_AvgMass <- log10(deg23_1$AvgMass)
+deg23_2$log_AvgMass <- log10(deg23_2$AvgMass)
+deg27_1$log_AvgMass <- log10(deg27_1$AvgMass)
+deg27_2$log_AvgMass <- log10(deg27_2$AvgMass)
+
+deg15_1_log_AvgMass_SW <- shapiro.test(deg15_1$log_AvgMass)
+print(deg15_1_log_AvgMass_SW) # 0.4054
+deg15_2_log_AvgMass_SW <- shapiro.test(deg15_2$log_AvgMass)
+print(deg15_2_log_AvgMass_SW) # 0.2364
+deg19_1_log_AvgMass_SW <- shapiro.test(deg19_1$log_AvgMass)
+print(deg19_1_log_AvgMass_SW) # 0.2602
+deg19_2_log_AvgMass_SW <- shapiro.test(deg19_2$log_AvgMass)
+print(deg19_2_log_AvgMass_SW) # 0.9547
+deg23_1_log_AvgMass_SW <- shapiro.test(deg23_1$log_AvgMass)
+print(deg23_1_log_AvgMass_SW) # 0.2629
+deg23_2_log_AvgMass_SW <- shapiro.test(deg23_2$log_AvgMass)
+print(deg23_2_log_AvgMass_SW) # 0.586
+deg27_1_log_AvgMass_SW <- shapiro.test(deg27_1$log_AvgMass)
+print(deg27_1_log_AvgMass_SW) # 0.02197
+deg27_2_log_AvgMass_SW <- shapiro.test(deg27_2$log_AvgMass)
+print(deg27_2_log_AvgMass_SW) # 0.2021
+
+# transform the data; test is sqrt transformation creates normally distributed data
+deg15_1$sqrt_AvgMass <- sqrt(deg15_1$AvgMass)
+deg15_2$sqrt_AvgMass <- sqrt(deg15_2$AvgMass)
+deg19_1$sqrt_AvgMass <- sqrt(deg19_1$AvgMass)
+deg19_2$sqrt_AvgMass <- sqrt(deg19_2$AvgMass)
+deg23_1$sqrt_AvgMass <- sqrt(deg23_1$AvgMass)
+deg23_2$sqrt_AvgMass <- sqrt(deg23_2$AvgMass)
+deg27_1$sqrt_AvgMass <- sqrt(deg27_1$AvgMass)
+deg27_2$sqrt_AvgMass <- sqrt(deg27_2$AvgMass)
+
+deg15_1_sqrt_AvgMass_SW <- shapiro.test(deg15_1$sqrt_AvgMass)
+print(deg15_1_sqrt_AvgMass_SW)
+deg15_2_sqrt_AvgMass_SW <- shapiro.test(deg15_2$sqrt_AvgMass)
+print(deg15_2_sqrt_AvgMass_SW)
+deg19_1_sqrt_AvgMass_SW <- shapiro.test(deg19_1$sqrt_AvgMass)
+print(deg19_1_sqrt_AvgMass_SW)
+deg19_2_sqrt_AvgMass_SW <- shapiro.test(deg19_2$sqrt_AvgMass)
+print(deg19_2_sqrt_AvgMass_SW)
+deg23_1_sqrt_AvgMass_SW <- shapiro.test(deg23_1$sqrt_AvgMass)
+print(deg23_1_sqrt_AvgMass_SW)
+deg23_2_sqrt_AvgMass_SW <- shapiro.test(deg23_2$sqrt_AvgMass)
+print(deg23_2_sqrt_AvgMass_SW)
+deg27_1_sqrt_AvgMass_SW <- shapiro.test(deg27_1$sqrt_AvgMass)
+print(deg27_1_sqrt_AvgMass_SW)
+deg27_2_sqrt_AvgMass_SW <- shapiro.test(deg27_2$sqrt_AvgMass)
+print(deg27_2_sqrt_AvgMass_SW)
+
+data2$Age <- as.factor(data2$Age)
+data2$Temp <- as.factor(data2$Temp)
+
+# Normality was assumed, 2-way ANOVA was performed 
+Figure1B_anova_result <- aov(AvgMass ~ Age * Temp, data = data2)
+print(Figure1B_anova_result)
+summary(Figure1B_anova_result)
+      # Age:      p = 3.61e-12
+      # Temp:     p = 2.01e-06
+      # Age:Temp: p = 8.88e-05
+
+# Perform Tukey's Honest Significant Difference test
+TukeyHSD(Figure1B_anova_result)
+      # for AgeGroup1 across temps: 
+          # 15 to 19: p = 0.9958352
+          # 15 to 23: p = 0.9815106
+          # 15 to 27: p = 0.9952788
+          # 19 to 23: p = 0.9999993
+          # 19 to 27: p = 1.0000000
+          # 23 to 27: p = 0.9999996
+      # for AgeGroup2 across temps: 
+          # 15 to 19: p = 0.0000465
+          # 15 to 23: p = 0.0000000
+          # 15 to 27: p = 0.8208747
+          # 19 to 23: p = 0.0374711
+          # 19 to 27: p = 0.0769869
+          # 23 to 27: p = 0.0000434
+      # for temps between AgeGroups:
+          # 15 to 15: p = 0.6951988
+          # 19 to 19: p = 0.0000073
+          # 23 to 23: p = 0.0000000
+          # 27 to 27: p = 0.3986934
+
+# If you wanted to check a one-way ANOVA for each age specifically 
+Age1_MassbyTemp_aov <- aov(AvgMass ~ Temp, data = data2_1)
+summary(Age1_MassbyTemp_aov) # F = 1.289, p = 0.291
+Age2_MassbyTemp_aov <- aov(AvgMass ~ Temp, data = data2_2)
+summary(Age2_MassbyTemp_aov) # F = 11.74, p = 6.51e-06 ***
+TukeyHSD(Age2_MassbyTemp_aov) # Tukey post-hoc
+
+# Summary of mass at every age and temp (# = mean)
+# standard error on the mean (sem) is returned below using the function created
+mass_mg <- function(x) {
+  return(mean(x)*1000)
+}
+                    # this function returns the mean mass, converted from g to mg
+sem <- function(x) {
+  return(1000*(sd(x) / sqrt(length(x))))
+} 
+                    # this function returns the standard error on the mean, converted to mg 
+
+mass_mg(deg15_1$AvgMass) # 12.52
+sem(deg15_1$AvgMass) # 0.74
+mass_mg(deg15_2$AvgMass) # 17.89
+sem(deg15_2$AvgMass) # 1.91
+mass_mg(deg19_1$AvgMass) # 15.03
+sem(deg19_1$AvgMass) # 0.96
+mass_mg(deg19_2$AvgMass) # 32.43
+sem(deg19_2$AvgMass) # 2.28
+mass_mg(deg23_1$AvgMass) # 15.75
+sem(deg23_1$AvgMass) # 1.39
+mass_mg(deg23_2$AvgMass) # 44.20
+sem(deg23_2$AvgMass) # 7.15
+mass_mg(deg27_1$AvgMass) # 15.08
+sem(deg27_1$AvgMass) # 1.95
+mass_mg(deg27_2$AvgMass) # 22.94
+sem(deg27_2$AvgMass) # 2.40
+```
+
+Figure 1a plot
+
+```{r, Figure 1a}
+# Defines custom colors for temperature cohorts
+custom_colours_temp <- c(
+  "15" = "#2c7bb6",  # Blue
+  "19" = "#abd9e9",  # Light Blue
+  "23" = "#fdae61",  # Orange
+  "27" = "#d7191c"   # Red
+)
+
+# Define custom opacities for age cohorts (younger group appears lighter in colour)
+custom_opacities_age <- c("1" = 0.6, "2" = 1)
+
+# converts g to mg 
+mass_mg <- 1000*(data2$AvgMass)
+
+# Plot for Average Mass with custom colors for Temperature and custom opacities for Age
+plot_1A <- ggplot(data2, aes(x = as.factor(Temp), y = mass_mg, fill = as.factor(Temp), alpha = as.factor(Age))) +
+  geom_boxplot(position = position_dodge(width = 0.8), color = "black") +
+  labs(x = "Temperature (°C)", y = "Mass (mg)") +
+  scale_fill_manual(values = custom_colours_temp) +  
+  scale_alpha_manual(values = custom_opacities_age) +  
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8),
+    panel.grid = element_blank(),   
+    legend.position = "none",        
+    plot.title = element_text(hjust = 0, size = 14), 
+    axis.line = element_line(color = "black"), 
+    axis.ticks = element_line(color = "black"), 
+    axis.ticks.length = unit(0.2, "cm") 
+   ) +
+  annotate("text", x = 0.8, y = 21.8, label = "a", size = 3) +
+  annotate("text", x = 1.2, y = 36.4, label = "a", size = 3) +
+  annotate("text", x = 1.8, y = 24.3, label = "a", size = 3) +
+  annotate("text", x = 2.2, y = 63.5, label = "b", size = 3) +
+  annotate("text", x = 2.8, y = 27.5, label = "a", size = 3) +
+  annotate("text", x = 3.2, y = 74.7, label = "c", size = 3) +
+  annotate("text", x = 3.8, y = 37.7, label = "a", size = 3) +
+  annotate("text", x = 4.2, y = 39.9, label = "ab", size = 3) 
+
+print(plot_1A)
+
+# for the annotations
+1000*max(deg15_1$AvgMass) # 16.8
+1000*max(deg15_2$AvgMass) # 31.4 
+1000*max(deg19_1$AvgMass) # 19.3
+1000*max(deg19_2$AvgMass) # 58.5
+1000*max(deg23_1$AvgMass) # 22.5
+1000*max(deg23_2$AvgMass) # 69.7
+1000*max(deg27_1$AvgMass) # 32.7
+1000*max(deg27_2$AvgMass) # 34.9
+
+```
+
+Figure 1b stats Effect of temperature on length between ages Tests for normality Two-way ANOVA (length \~ Temp \* Age) Tukey Post-hoc
+
+```{r}
+# first test normality of length across temperatures 
+deg15_1_TL_SW <- shapiro.test(deg15_1$total_length_mm)
+print(deg15_1_TL_SW) # p = 0.9606
+deg15_2_TL_SW <- shapiro.test(deg15_2$total_length_mm)
+print(deg15_2_TL_SW) # p = 0.04336 
+deg19_1_TL_SW <- shapiro.test(deg19_1$total_length_mm)
+print(deg19_1_TL_SW) # p = 0.3795
+deg19_2_TL_SW <- shapiro.test(deg19_2$total_length_mm)
+print(deg19_2_TL_SW) # p = 0.2324
+deg23_1_TL_SW <- shapiro.test(deg23_1$total_length_mm)
+print(deg23_1_TL_SW) # p = 0.2645
+deg23_2_TL_SW <- shapiro.test(deg23_2$total_length_mm)
+print(deg23_2_TL_SW) # p = 0.2547
+deg27_1_TL_SW <- shapiro.test(deg27_1$total_length_mm)
+print(deg27_1_TL_SW) # p = 0.4512
+deg27_2_TL_SW <- shapiro.test(deg27_2$total_length_mm)
+print(deg27_2_TL_SW) # p = 0.2389
+
+data2$log_total_length_mm <- log10(data2$total_length_mm)
+data2$sqrt_total_length_mm <- sqrt(data2$total_length_mm)
+
+deg15 <- subset(data2, Temp == "15")
+deg19 <- subset(data2, Temp == "19")
+deg23 <- subset(data2, Temp == "23")
+deg27 <- subset(data2, Temp == "27")
+
+deg15_1 <- subset(deg15, Age == "1")
+deg15_2 <- subset(deg15, Age == "2")
+deg19_1 <- subset(deg19, Age == "1")
+deg19_2 <- subset(deg19, Age == "2")
+deg23_1 <- subset(deg23, Age == "1")
+deg23_2 <- subset(deg23, Age == "2")
+deg27_1 <- subset(deg27, Age == "1")
+deg27_2 <- subset(deg27, Age == "2")
+
+deg15_1_logTL_SW <- shapiro.test(deg15_1$log_total_length_mm)
+print(deg15_1_logTL_SW) # p = 0.9202
+deg15_2_logTL_SW <- shapiro.test(deg15_2$log_total_length_mm)
+print(deg15_2_logTL_SW) # p = 0.0058
+deg19_1_logTL_SW <- shapiro.test(deg19_1$log_total_length_mm)
+print(deg19_1_logTL_SW) # p = 0.3902
+deg19_2_logTL_SW <- shapiro.test(deg19_2$log_total_length_mm)
+print(deg19_2_logTL_SW) # p = 0.0965
+deg23_1_logTL_SW <- shapiro.test(deg23_1$log_total_length_mm)
+print(deg23_1_logTL_SW) # p = 0.2681
+deg23_2_logTL_SW <- shapiro.test(deg23_2$log_total_length_mm)
+print(deg23_2_logTL_SW) # p = 0.1985
+deg27_1_logTL_SW <- shapiro.test(deg27_1$log_total_length_mm)
+print(deg27_1_logTL_SW) # p = 0.7874
+deg27_2_logTL_SW <- shapiro.test(deg27_2$log_total_length_mm)
+print(deg27_2_logTL_SW) # p = 0.2607
+
+# Perform Shapiro-Wilk test on the square root-transformed data
+deg15_1_sqrtTL_SW <- shapiro.test(deg15_1$sqrt_total_length_mm)
+print(deg15_1_sqrtTL_SW) # p = 0.946
+deg15_2_sqrtTL_SW <- shapiro.test(deg15_2$sqrt_total_length_mm)
+print(deg15_2_sqrtTL_SW) # p = 0.0169
+deg19_1_sqrtTL_SW <- shapiro.test(deg19_1$sqrt_total_length_mm)
+print(deg19_1_sqrtTL_SW) # p = 0.3856
+deg19_2_sqrtTL_SW <- shapiro.test(deg19_2$sqrt_total_length_mm)
+print(deg19_2_sqrtTL_SW) # p = 0.1537
+deg23_1_sqrtTL_SW <- shapiro.test(deg23_1$sqrt_total_length_mm)
+print(deg23_1_sqrtTL_SW) # p = 0.2675
+deg23_2_sqrtTL_SW <- shapiro.test(deg23_2$sqrt_total_length_mm)
+print(deg23_2_sqrtTL_SW) # p = 0.2256
+deg27_1_sqrtTL_SW <- shapiro.test(deg27_1$sqrt_total_length_mm)
+print(deg27_1_sqrtTL_SW) # p = 0.6443
+deg27_2_sqrtTL_SW <- shapiro.test(deg27_2$sqrt_total_length_mm)
+print(deg27_2_sqrtTL_SW) # p = 0.2507
+
+data2$Age <- as.factor(data2$Age)
+data2$Temp <- as.factor(data2$Temp)
+
+# normality was assumed, two-way ANOVA was performed 
+Figure1C_anova_result <- aov(total_length_mm ~ Age * Temp, data = data2)
+summary(Figure1C_anova_result)
+      # Age:      p = 4.10e-10 ***
+      # Temp:     p = 9.14e-08 ***
+      # Age:Temp: p = 0.000188 ***
+
+# Tukey post-hoc on total length ANOVA result 
+TukeyHSD(Figure1C_anova_result)
+    # for AgeGroup1 across temps: 
+          # 15 to 19: p = 0.8790923 
+          # 15 to 23: p = 0.9990511 
+          # 15 to 27: p = 0.9999999 
+          # 19 to 23: p = 0.9956420 
+          # 19 to 27: p = 0.8382062 
+          # 23 to 27: p = 0.9968063  
+    # for AgeGroup2 across temps: 
+          # 15 to 19: p = 0.0000001 
+          # 15 to 23: p = 0.0000001 
+          # 15 to 27: p = 0.1342599
+          # 19 to 23: p = 0.7022079 
+          # 19 to 27: p = 0.0674854
+          # 23 to 27: p = 0.0058309
+    # for temps between AgeGroups:
+          # 15 to 15: p = 0.9999976
+          # 19 to 19: p = 0.0001526
+          # 23 to 23: p = 0.0000019
+          # 27 to 27: p = 0.0897564 
+
+# If you wanted to check a one-way ANOVA for each age specifically 
+Age1_LengthbyTemp_aov <- aov(total_length_mm ~ Temp, data = data2_1)
+summary(Age1_LengthbyTemp_aov) # F = 1.451, p = 0.242
+Age2_LengthbyTemp_aov <- aov(total_length_mm ~ Temp, data = data2_2)
+summary(Age2_LengthbyTemp_aov) # F = 15.54, p = 3.1e-07 ***
+TukeyHSD(Age2_LengthbyTemp_aov)
+
+# Summary of total length at every age and temp (# = mean)
+# standard error on the mean (sem) is returned below using the function created
+length_mm <- function(x) {
+  return(mean(x))
+}
+                    # this function returns the mean total length
+sem_TL <- function(x) {
+  return((sd(x) / sqrt(length(x))))
+} 
+                    # this function returns the standard error on the mean
+
+length_mm(deg15_1$total_length_mm) # 12.18
+sem_TL(deg15_1$total_length_mm) # 0.29
+length_mm(deg15_2$total_length_mm) # 12.33
+sem_TL(deg15_2$total_length_mm) # 0.62
+length_mm(deg19_1$total_length_mm) # 13.10
+sem_TL(deg19_1$total_length_mm) # 0.19
+length_mm(deg19_2$total_length_mm) # 16.08
+sem_TL(deg19_2$total_length_mm) # 0.37
+length_mm(deg23_1$total_length_mm) # 12.57
+sem_TL(deg23_1$total_length_mm) # 0.35
+length_mm(deg23_2$total_length_mm) # 17.30
+sem_TL(deg23_2$total_length_mm) # 0.75
+length_mm(deg27_1$total_length_mm) # 12.08
+sem_TL(deg27_1$total_length_mm) # 0.60
+length_mm(deg27_2$total_length_mm) # 14.17
+sem_TL(deg27_2$total_length_mm) # 0.50
+```
+
+Figure 1b plot
+
+```{r}
+# Define custom colors for Temperature
+custom_colours_temp <- c(
+  "15" = "#2c7bb6",  # Blue
+  "19" = "#abd9e9",  # Light Blue
+  "23" = "#fdae61",  # Orange
+  "27" = "#d7191c"   # Red
+)
+
+# Define custom opacities for Age
+custom_opacities_age <- c("1" = 0.6, "2" = 1)
+
+# Plot for Total Length with custom colors for Temperature and custom opacities for Age
+plot_1B <- ggplot(data2, aes(x = as.factor(Temp), y = total_length_mm, fill = as.factor(Temp), alpha = as.factor(Age))) +
+  geom_boxplot(position = position_dodge(width = 0.8), color = "black") +
+  labs(x = "Temperature (°C)", y = "Total Length (mm)") +
+  scale_fill_manual(values = custom_colours_temp) +  
+  scale_alpha_manual(values = custom_opacities_age) +  
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(size = 10),
+    axis.title.y = element_text(size = 10),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8),
+    panel.grid = element_blank(), 
+    legend.position = "none",        
+    plot.title = element_text(hjust = 0, size = 14), 
+    axis.line = element_line(color = "black"), 
+    axis.ticks = element_line(color = "black"), 
+    axis.ticks.length = unit(0.2, "cm") 
+  ) +
+  annotate("text", x = 0.8, y = 15.9, label = "a", size = 3) +
+  annotate("text", x = 1.2, y = 16.9, label = "a", size = 3) +
+  annotate("text", x = 1.8, y = 16.1, label = "a", size = 3) +
+  annotate("text", x = 2.2, y = 20.9, label = "bc", size = 3) +
+  annotate("text", x = 2.8, y = 16.5, label = "a", size = 3) +
+  annotate("text", x = 3.2, y = 21.4, label = "c", size = 3) +
+  annotate("text", x = 3.8, y = 18.3, label = "a", size = 3) +
+  annotate("text", x = 4.2, y = 18.5, label = "ab", size = 3)
+
+# for annotations 
+max(deg15_1$total_length_mm) + 3
+max(deg15_2$total_length_mm) + 3
+max(deg19_1$total_length_mm) + 3
+max(deg19_2$total_length_mm) + 3
+max(deg23_1$total_length_mm) + 3
+max(deg23_2$total_length_mm) + 3
+max(deg27_1$total_length_mm) + 3
+max(deg27_2$total_length_mm) + 3
+
+print(plot_1B)
+```
+
+Create Figure 1 Note: the chunks "Figure 1a plot" and "Figure 1b plot" must BOTH be ran FIRST
+
+```{r}
+# Combine the plots into a single figure with an empty panel on the left
+Figure1 <- plot_1A + plot_1B +
+  plot_layout(ncol = 2, widths = c(3, 3)) + 
+  theme(plot.margin = margin(10, 10, 10, 10))
+
+# Display the combined plot
+print(Figure1)
+
+ggsave("Figure1.tif", plot = Figure1, width = 6.5, height = 3, dpi = 300)
+```
+
+Modelling RMR allometry with linear mixed effect models
+
+```{r}
+# First, RMR is converted from units of (mg O2) into (umol O2) using the multiplier 31.25
+data2$absoluteRMR_umolO2_h <- data2$absoluteRMR_mgO2_h * 31.25 # conversion
+data2$log_absoluteRMR_umolO2_h <- log10(data2$absoluteRMR_umolO2_h) # log10 transformation
+
+# Mass is also transformed with log10
+data2$log10_AvgMass <- log10(data2$AvgMass)
+
+# Determining the most parsimonious model: the lowest AIC value indicates the most parsimonious model
+absoluteRMR_lme_model_MASS_TEMP_AGE_TEMP.AGE_CHANNEL <- lmer(log_absoluteRMR_umolO2_h ~ log10_AvgMass + Temp + Age + Temp*Age + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteRMR_lme_model_MASS_TEMP_AGE_TEMP.AGE_CHANNEL)
+    # AIC = 5.0
+r2_values_RMRmodel_1 <- r.squaredGLMM(absoluteRMR_lme_model_MASS_TEMP_AGE_TEMP.AGE_CHANNEL)
+print(r2_values_RMRmodel_1)
+    # R2c = 0.589
+
+absoluteRMR_lme_model_MASS_TEMP_AGE_CHANNEL <- lmer(log_absoluteRMR_umolO2_h ~ log10_AvgMass + Temp + Age + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteRMR_lme_model_MASS_TEMP_AGE_CHANNEL)
+    # AIC = 1.6 --- MOST PARSIMONIOUS
+r2_values_RMRmodel_2 <- r.squaredGLMM(absoluteRMR_lme_model_MASS_TEMP_AGE_CHANNEL)
+print(r2_values_RMRmodel_2)
+
+absoluteRMR_lme_model_MASS_TEMP_CHANNEL <- lmer(log_absoluteRMR_umolO2_h ~ log10_AvgMass + Temp + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteRMR_lme_model_MASS_TEMP_CHANNEL)
+    # AIC = 2.6
+r2_values_RMRmodel_3 <- r.squaredGLMM(absoluteRMR_lme_model_MASS_TEMP_CHANNEL)
+print(r2_values_RMRmodel_3)
+
+absoluteRMR_lme_model_MASS_AGE_CHANNEL <- lmer(log_absoluteRMR_umolO2_h ~ log10_AvgMass + Age + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteRMR_lme_model_MASS_AGE_CHANNEL)
+    # AIC = 23.9
+r2_values_RMRmodel_4 <- r.squaredGLMM(absoluteRMR_lme_model_MASS_AGE_CHANNEL)
+print(r2_values_RMRmodel_4)
+
+absoluteRMR_lme_model_MASS_CHANNEL <- lmer(log_absoluteRMR_umolO2_h ~ log10_AvgMass + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteRMR_lme_model_MASS_CHANNEL)
+    # AIC = 29.0
+r2_values_RMRmodel_5 <- r.squaredGLMM(absoluteRMR_lme_model_MASS_CHANNEL)
+print(r2_values_RMRmodel_5)
+
+# the model that fit the data best was "absoluteRMR_lme_model_MASS_TEMP_AGE_CHANNEL"
+      # summary of coefficients: 
+#              Estimate Std. Error       df t value Pr(>|t|)    
+# (Intercept)    0.83039    0.29777 98.71524   2.789  0.00635 ** 
+# log10_AvgMass  0.90753    0.14816 98.45177   6.125 1.86e-08 ***
+# Temp19         0.27426    0.06461 95.89734   4.245 5.06e-05 ***
+# Temp23         0.22152    0.07554 95.12074   2.933  0.00421 ** 
+# Temp27         0.36556    0.06608 95.15563   5.532 2.77e-07 ***
+# Age2          -0.10816    0.05907 96.16062  -1.831  0.07020 .
+
+# Calculate estimated marginal means and pairwise comparisons for Temp,
+# while holding the AvgMass at a specific value (0.021771, the mean of the masses)
+emmeans(absoluteRMR_lme_model_MASS_TEMP_AGE_CHANNEL, pairwise ~ Temp, 
+        var = "log10_AvgMass", 
+        at = list(log10_AvgMass = log10(0.021771)))
+```
+
+Modelling MMR allometry with linear mixed effect models
+
+```{r}
+# First, MMR is converted from units of (mg O2) into (umol O2) using the multiplier 31.25
+data2$absoluteMMR_umolO2_h <- data2$absoluteMMR_mgO2_h * 31.25 # conversion
+data2$log_absoluteMMR_umolO2_h <- log10(data2$absoluteMMR_umolO2_h) # log10 transformation
+
+# Mass is also transformed with log10
+data2$log10_AvgMass <- log10(data2$AvgMass)
+
+# Determining the most parsimonious model: the lowest AIC value indicates the most parsimonious model
+absoluteMMR_lme_model_MASS_TEMP_AGE_TEMP.AGE_CHANNEL <- lmer(log_absoluteMMR_umolO2_h ~ log10_AvgMass + Temp + Age + Temp*Age + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteMMR_lme_model_MASS_TEMP_AGE_TEMP.AGE_CHANNEL)
+    # AIC = 67.4
+r2_values_MMRmodel_1 <- r.squaredGLMM(absoluteMMR_lme_model_MASS_TEMP_AGE_TEMP.AGE_CHANNEL)
+print(r2_values_MMRmodel_1)
+
+absoluteMMR_lme_model_MASS_TEMP_AGE_CHANNEL <- lmer(log_absoluteMMR_umolO2_h ~ log10_AvgMass + Temp + Age + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteMMR_lme_model_MASS_TEMP_AGE_CHANNEL)
+    # AIC = 64.6
+absoluteMMR_lme_model_MASS_TEMP_CHANNEL <- lmer(log_absoluteMMR_umolO2_h ~ log10_AvgMass + Temp + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteMMR_lme_model_MASS_TEMP_CHANNEL)
+    # AIC = 68.5
+absoluteMMR_lme_model_MASS_AGE_CHANNEL <- lmer(log_absoluteMMR_umolO2_h ~ log10_AvgMass + Age + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteMMR_lme_model_MASS_AGE_CHANNEL)
+    # AIC = 63.0 --- MOST PARSIMONIOUS 
+r2_values_MMRmodel_4 <- r.squaredGLMM(absoluteMMR_lme_model_MASS_AGE_CHANNEL)
+print(r2_values_MMRmodel_4)
+
+absoluteMMR_lme_model_MASS_CHANNEL <- lmer(log_absoluteMMR_umolO2_h ~ log10_AvgMass + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteMMR_lme_model_MASS_CHANNEL)
+    # AIC = 66.7
+
+# the model that fit the data best was "absoluteMMR_lme_model_MASS_AGE_CHANNEL"
+      # summary of coefficients: 
+#               Estimate Std. Error       df t value Pr(>|t|)    
+# (Intercept)    1.76259    0.33704 99.00000   5.230 9.48e-07 ***
+# log10_AvgMass  0.82375    0.17989 99.00000   4.579 1.36e-05 ***
+# Age2          -0.19028    0.07838 99.00000  -2.428    0.017 *  
+
+# Calculate estimated marginal means and pairwise comparisons for age,
+# while holding the AvgMass at a specific value (0.021771, the mean of the masses)
+emmeans(absoluteMMR_lme_model_MASS_AGE_CHANNEL, pairwise ~ Age, 
+        var = "log10_AvgMass", 
+        at = list(log10_AvgMass = log10(0.021771)))
+
+```
+
+Create Figure 2
+
+```{r, Figure 2}
+max(data2$AvgMass)
+
+x_limits <- range(deg15$AvgMass, deg19$AvgMass, deg23$AvgMass, deg27$AvgMass, 0.08)
+y_limits <- range(
+  deg15$absoluteRMR_umolO2_h, deg15$absoluteMMR_umolO2_h,
+  deg19$absoluteRMR_umolO2_h, deg19$absoluteMMR_umolO2_h,
+  deg23$absoluteRMR_umolO2_h, deg23$absoluteMMR_umolO2_h,
+  deg27$absoluteRMR_umolO2_h, deg27$absoluteMMR_umolO2_h
+)
+
+mmr_ages <- c(16, 17)  # 
+rmr_ages <- c(1, 2)  # 
+
+# Fit linear models for RMR and MMR
+lm_RMR_15 <- lm(log10(absoluteRMR_umolO2_h) ~ log10(AvgMass), data = deg15)
+lm_MMR_15 <- lm(log10(absoluteMMR_umolO2_h) ~ log10(AvgMass), data = deg15)
+
+# Predict y-values at the maximum AvgMass (x-value)
+predicted_RMR_15 <- 10^(predict(lm_RMR_15, newdata = data.frame(AvgMass = max(deg15$AvgMass))))
+predicted_MMR_15 <- 10^(predict(lm_MMR_15, newdata = data.frame(AvgMass = max(deg15$AvgMass))))
+
+
+# Plot
+plot_2A <- ggplot(deg15, aes(x = AvgMass)) +
+  geom_smooth(aes(y = absoluteRMR_umolO2_h), method = "lm", color = "#2c7bb6", se = TRUE, fill = "#2c7bb6", alpha = 0.3, size = 0.5) +
+  geom_smooth(aes(y = absoluteMMR_umolO2_h), method = "lm", color = "#2c7bb6", se = TRUE, fill = "#2c7bb6", alpha = 0.7, size = 0.5) +
+  geom_point(aes(y = absoluteRMR_umolO2_h), color = "darkgrey", shape = rmr_ages[deg15$Age], alpha = 1) +
+  geom_point(aes(y = absoluteMMR_umolO2_h), color = "darkgrey", shape = mmr_ages[deg15$Age], alpha = 1) +
+  scale_x_log10(name = "Mass (g)", limits = x_limits) +
+  scale_y_log10(name = expression(MO[2]~(µmol~O[2]~h^{-1})), limits = y_limits) +
+  annotate("text", x = max(deg15$AvgMass), y = predicted_RMR_15, label = "R", color = "black", hjust = -0.2, vjust = 0, size = 3) +
+  annotate("text", x = max(deg15$AvgMass), y = predicted_MMR_15, label = "M", color = "black", hjust = -0.2, vjust = 0, size = 3) +
+  
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.grid = element_blank(), 
+        axis.line = element_line(color = "black"),
+        axis.ticks = element_line(color = "black"),
+        axis.ticks.length = unit(0.2, "cm"),
+        axis.title.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        axis.text.x = element_text(size = 8),
+        axis.text.y = element_text(size = 8)) +
+  theme(plot.title = element_text(hjust = 0, size = 14)) +
+  annotate("text", x = max(x_limits), y = min(y_limits), label = "15°C", hjust = 1, vjust = 0, size = 4)
+
+print(plot_2A)
+
+
+# Fit linear models for RMR and MMR
+lm_RMR_19 <- lm(log10(absoluteRMR_umolO2_h) ~ log10(AvgMass), data = deg19)
+lm_MMR_19 <- lm(log10(absoluteMMR_umolO2_h) ~ log10(AvgMass), data = deg19)
+
+# Predict y-values at the maximum AvgMass (x-value)
+predicted_RMR_19 <- 10^(predict(lm_RMR_19, newdata = data.frame(AvgMass = max(deg19$AvgMass))))
+predicted_MMR_19 <- 10^(predict(lm_MMR_19, newdata = data.frame(AvgMass = max(deg19$AvgMass))))
+
+# Plot
+plot_2B <- ggplot(deg19, aes(x = AvgMass)) +
+  geom_smooth(aes(y = absoluteRMR_umolO2_h), method = "lm", color = "#abd9e9", se = TRUE, fill = "#abd9e9", alpha = 0.3, size = 0.5) +
+  geom_smooth(aes(y = absoluteMMR_umolO2_h), method = "lm", color = "#abd9e9", se = TRUE, fill = "#abd9e9", alpha = 0.7, size = 0.5) +
+  geom_point(aes(y = absoluteRMR_umolO2_h), color = "darkgrey", shape = rmr_ages[deg19$Age], alpha = 1) +
+  geom_point(aes(y = absoluteMMR_umolO2_h), color = "darkgrey", shape = mmr_ages[deg19$Age], alpha = 1) +
+  scale_x_log10(name = "Mass (g)", limits = x_limits) +
+  scale_y_log10(name = expression(MO[2]~(µmol~O[2]~h^{-1})), limits = y_limits) +
+  annotate("text", x = max(deg19$AvgMass), y = predicted_RMR_19, label = "R", color = "black", hjust = -0.2, vjust = 0, size = 3) +
+  annotate("text", x = max(deg19$AvgMass), y = predicted_MMR_19, label = "M", color = "black", hjust = -0.2, vjust = 0, size = 3) +
+  
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.grid = element_blank(), 
+        axis.line = element_line(color = "black"),
+        axis.ticks = element_line(color = "black"),
+        axis.ticks.length = unit(0.2, "cm"),
+        axis.title.x = element_text(size = 10),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 8)) +
+  theme(plot.title = element_text(hjust = 0, size = 14)) +
+  annotate("text", x = max(x_limits), y = min(y_limits), label = "19°C", hjust = 1, vjust = 0, size = 4)
+
+print(plot_2B)
+
+# Fit linear models for RMR and MMR
+lm_RMR_23 <- lm(log10(absoluteRMR_umolO2_h) ~ log10(AvgMass), data = deg23)
+lm_MMR_23 <- lm(log10(absoluteMMR_umolO2_h) ~ log10(AvgMass), data = deg23)
+
+# Predict y-values at the maximum AvgMass (x-value)
+predicted_RMR_23 <- 10^(predict(lm_RMR_23, newdata = data.frame(AvgMass = max(deg23$AvgMass))))
+predicted_MMR_23 <- 10^(predict(lm_MMR_23, newdata = data.frame(AvgMass = max(deg23$AvgMass))))
+
+# Plot
+plot_2C <- ggplot(deg23, aes(x = AvgMass)) +
+  geom_smooth(aes(y = absoluteRMR_umolO2_h), method = "lm", color = "#fdae61", se = TRUE, fill = "#fdae61", alpha = 0.3, size = 0.5) +
+  geom_smooth(aes(y = absoluteMMR_umolO2_h), method = "lm", color = "#fdae61", se = TRUE, fill = "#fdae61", alpha = 0.7, size = 0.5) +
+  geom_point(aes(y = absoluteRMR_umolO2_h), color = "darkgrey", shape = rmr_ages[deg23$Age], alpha = 1) +
+  geom_point(aes(y = absoluteMMR_umolO2_h), color = "darkgrey", shape = mmr_ages[deg23$Age], alpha = 1) +
+  scale_x_log10(name = "Mass (g)", limits = x_limits) +
+  scale_y_log10(name = expression(MO[2]~(µmol~O[2]~h^{-1})), limits = y_limits) +
+  annotate("text", x = max(deg23$AvgMass), y = predicted_RMR_23, label = "R", color = "black", hjust = -0.2, vjust = 0, size = 3) +
+  annotate("text", x = max(deg23$AvgMass), y = predicted_MMR_23, label = "M", color = "black", hjust = -0.2, vjust = 0, size = 3) +
+  
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.grid = element_blank(), 
+        axis.line = element_line(color = "black"),
+        axis.ticks = element_line(color = "black"),
+        axis.ticks.length = unit(0.2, "cm"),
+        axis.title.x = element_text(size = 10),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 8)) +
+  theme(plot.title = element_text(hjust = 0, size = 14)) +
+  annotate("text", x = max(x_limits), y = min(y_limits), label = "23°C", hjust = 1, vjust = 0, size = 4)
+
+print(plot_2C)
+
+# Fit linear models for RMR and MMR
+lm_RMR_27 <- lm(log10(absoluteRMR_umolO2_h) ~ log10(AvgMass), data = deg27)
+lm_MMR_27 <- lm(log10(absoluteMMR_umolO2_h) ~ log10(AvgMass), data = deg27)
+
+# Predict y-values at the maximum AvgMass (x-value)
+predicted_RMR_27 <- 10^(predict(lm_RMR_27, newdata = data.frame(AvgMass = max(deg27$AvgMass))))
+predicted_MMR_27 <- 10^(predict(lm_MMR_27, newdata = data.frame(AvgMass = max(deg27$AvgMass))))
+
+# Plot
+plot_2D <- ggplot(deg27, aes(x = AvgMass)) +
+  geom_smooth(aes(y = absoluteRMR_umolO2_h), method = "lm", color = "#d7191c", se = TRUE, fill = "#d7191c", alpha = 0.3, size = 0.5) +
+  geom_smooth(aes(y = absoluteMMR_umolO2_h), method = "lm", color = "#d7191c", se = TRUE, fill = "#d7191c", alpha = 0.7, size = 0.5) +
+  geom_point(aes(y = absoluteRMR_umolO2_h), color = "darkgrey", shape = rmr_ages[deg27$Age], alpha = 1) +
+  geom_point(aes(y = absoluteMMR_umolO2_h), color = "darkgrey", shape = mmr_ages[deg27$Age], alpha = 1) +
+   scale_x_log10(name = "Mass (g)", limits = x_limits) +
+  scale_y_log10(name = expression(MO[2]~(µmol~O[2]~h^{-1})), limits = y_limits) +
+  annotate("text", x = max(deg27$AvgMass), y = predicted_RMR_27, label = "R", color = "black", hjust = -0.2, vjust = 0, size = 3) +
+  annotate("text", x = max(deg27$AvgMass), y = predicted_MMR_27, label = "M", color = "black", hjust = -0.2, vjust = 0, size = 3) +
+  
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.grid = element_blank(), 
+        axis.line = element_line(color = "black"),
+        axis.ticks = element_line(color = "black"),
+        axis.ticks.length = unit(0.2, "cm"),
+        axis.title.x = element_text(size = 10),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 8)) +
+  theme(plot.title = element_text(hjust = 0, size = 14)) +
+  annotate("text", x = max(x_limits), y = min(y_limits), label = "27°C", hjust = 1, vjust = 0, size = 4)
+
+print(plot_2D)
+
+# Combines the plots into a 4-panel figure
+Figure2 <- plot_2A + plot_2B + plot_2C + plot_2D + 
+  plot_layout(ncol = 4, nrow = 1)
+
+# Display the combined plot
+print(Figure2)
+
+ggsave("Figure2.tif", plot = Figure2, width = 7, height = 2.75, dpi = 300)
+
+```
+
+Modelling Scope for Activity with linear mixed effect models
+* Note: In an earlier version, we considered Aerobic Scope; however we changed this variable to 'Scope for Activity' since we measured RMR and MMR. While this change is reflected in the manuscript, in this code we refer to this variable as "Aerobic Scope" (or AS). 
+
+```{r}
+# First define the AS 
+# Note: RMR and MMR models should be ran first to ensure these variables exist; see line XXX and XXX
+data2$absoluteAS_umolO2_h <- data2$absoluteMMR_umolO2_h - data2$absoluteRMR_umolO2_h
+data2$log_absoluteAS_umolO2_h <- log10(data2$absoluteAS_umolO2_h)
+
+# log10 transform mass (running this line is not mandatory if RMR and MMR models already created)
+data2$log10_AvgMass <- log10(data2$AvgMass)
+
+# Determining the most parsimonious model: the lowest AIC value indicates the most parsimonious model
+absoluteAS_lme_model_MASS_TEMP_AGE_TEMP.AGE_CHANNEL <- lmer(log_absoluteAS_umolO2_h ~ log10_AvgMass + Temp + Age + Temp*Age + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteAS_lme_model_MASS_TEMP_AGE_TEMP.AGE_CHANNEL)
+    # AIC = 137.2
+absoluteAS_lme_model_MASS_TEMP_AGE_CHANNEL <- lmer(log_absoluteAS_umolO2_h ~ log10_AvgMass + Temp + Age + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteAS_lme_model_MASS_TEMP_AGE_CHANNEL)
+    # AIC = 134.6
+absoluteAS_lme_model_MASS_TEMP_CHANNEL <- lmer(log_absoluteAS_umolO2_h ~ log10_AvgMass + Temp + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteAS_lme_model_MASS_TEMP_CHANNEL)
+    # AIC = 138.5
+absoluteAS_lme_model_MASS_AGE_CHANNEL <- lmer(log_absoluteAS_umolO2_h ~ log10_AvgMass + Age + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteAS_lme_model_MASS_AGE_CHANNEL)
+    # AIC = 132.7 --- MOST PARSIMONIOUS
+absoluteAS_lme_model_MASS_CHANNEL <- lmer(log_absoluteAS_umolO2_h ~ log10_AvgMass + (1 | Channel), data = data2, REML = FALSE)
+summary(absoluteAS_lme_model_MASS_CHANNEL)
+    # AIC = 134.9
+
+# the model that fit the data best was "absoluteAS_lme_model_MASS_AGE_CHANNEL"
+      # summary of coefficients: 
+#              Estimate Std. Error      df t value Pr(>|t|)   
+# (Intercept)     1.4172     0.4792 99.0000   2.958  0.00388 **
+# log10_AvgMass   0.6852     0.2558 99.0000   2.679  0.00865 **
+# Age2           -0.2303     0.1114 99.0000  -2.066  0.04141 * 
+
+# Calculate estimated marginal means and pairwise comparisons for age,
+# while holding the AvgMass at a specific value (0.021771, the mean of the masses)
+emmeans(absoluteAS_lme_model_MASS_AGE_CHANNEL, pairwise ~ Age, 
+        var = "log10_AvgMass", 
+        at = list(log10_AvgMass = log10(0.021771)))
+```
+
+Figure 3 plot
+
+```{r}
+deg15$absoluteMMR_umol_O2_h <- deg15$absoluteMMR_mgO2_h * 31.25
+deg15$absoluteRMR_umol_O2_h <- deg15$absoluteRMR_mgO2_h * 31.25
+deg15$absolute_aerobic_scope <- deg15$absoluteMMR_umol_O2_h - deg15$absoluteRMR_umol_O2_h
+
+deg19$absoluteMMR_umol_O2_h <- deg19$absoluteMMR_mgO2_h * 31.25
+deg19$absoluteRMR_umol_O2_h <- deg19$absoluteRMR_mgO2_h * 31.25
+deg19$absolute_aerobic_scope <- deg19$absoluteMMR_umol_O2_h - deg19$absoluteRMR_umol_O2_h
+
+deg23$absoluteMMR_umol_O2_h <- deg23$absoluteMMR_mgO2_h * 31.25
+deg23$absoluteRMR_umol_O2_h <- deg23$absoluteRMR_mgO2_h * 31.25
+deg23$absolute_aerobic_scope <- deg23$absoluteMMR_umol_O2_h - deg23$absoluteRMR_umol_O2_h
+
+deg27$absoluteMMR_umol_O2_h <- deg27$absoluteMMR_mgO2_h * 31.25
+deg27$absoluteRMR_umol_O2_h <- deg27$absoluteRMR_mgO2_h * 31.25
+deg27$absolute_aerobic_scope <- deg27$absoluteMMR_umol_O2_h - deg27$absoluteRMR_umol_O2_h
+
+x_limits_AS <- range(deg15$AvgMass, deg19$AvgMass, deg23$AvgMass, deg27$AvgMass)
+y_limits_AS <- range(
+  deg15$absolute_aerobic_scope,
+  deg19$absolute_aerobic_scope, 
+  deg23$absolute_aerobic_scope, 
+  deg27$absolute_aerobic_scope)
+
+sa_ages <- c(16,17)
+
+library(ggplot2)
+# Plot for 15 degrees
+plot_3A <- ggplot(deg15, aes(x = AvgMass)) +
+  geom_smooth(aes(y = absolute_aerobic_scope), method = "lm", color = "#2c7bb6", se = TRUE, fill = "#2c7bb6", alpha = 0.3, size = 0.5) +
+  geom_point(aes(y = absolute_aerobic_scope), color = "darkgrey", shape = sa_ages[deg15$Age], alpha = 1) +
+  scale_x_log10(name = "Mass (g)", limits = x_limits_AS) +
+  scale_y_log10(name = expression("Scope for Activity ("*mu*"mol O"[2]*" h"^-1*")"), limits = y_limits_AS) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.grid = element_blank(), 
+        axis.line = element_line(color = "black"),
+        axis.ticks = element_line(color = "black"),
+        axis.ticks.length = unit(0.2, "cm"),
+        axis.title.x = element_text(size = 10),  # Larger x-axis label
+        axis.title.y = element_text(size = 10),
+        axis.text.x = element_text(size = 8),
+        axis.text.y = element_text(size = 8)) +
+  theme(plot.title = element_text(hjust = 0, size = 14)) +
+  annotate("text", x = max(x_limits_AS), y = min(y_limits_AS), label = "15°C", hjust = 1, vjust = 0, size = 4)
+print(plot_3A)
+
+# Plot for 19 degrees
+plot_3B <- ggplot(deg19, aes(x = AvgMass)) +
+  geom_smooth(aes(y = absolute_aerobic_scope), method = "lm", color = "#abd9e9", se = TRUE, fill = "#abd9e9", alpha = 0.3, size = 0.5) +
+  geom_point(aes(y = absolute_aerobic_scope), color = "darkgrey", shape = sa_ages[deg19$Age], alpha = 1) +
+  scale_x_log10(name = "Mass (g)", limits = x_limits_AS) +
+  scale_y_log10(limits = y_limits_AS) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        panel.grid = element_blank(), 
+        axis.line = element_line(color = "black"),
+        axis.ticks = element_line(color = "black"),
+        axis.ticks.length = unit(0.2, "cm"),
+        axis.title.x = element_text(size = 10),
+        axis.text.x = element_text(size = 8)) +
+  theme(plot.title = element_text(hjust = 0, size = 14)) +
+  annotate("text", x = max(x_limits_AS), y = min(y_limits_AS), label = "19°C", hjust = 1, vjust = 0, size = 4)
+print(plot_3B)
+
+# Plot for 23 degrees
+plot_3C <- ggplot(deg23, aes(x = AvgMass)) +
+  geom_smooth(aes(y = absolute_aerobic_scope), method = "lm", color = "#fdae61", se = TRUE, fill = "#fdae61", alpha = 0.3, size = 0.5) +
+  geom_point(aes(y = absolute_aerobic_scope), color = "darkgrey", shape = sa_ages[deg23$Age], alpha = 1) +
+  scale_x_log10(name = "Mass (g)", limits = x_limits_AS) +
+  scale_y_log10(limits = y_limits_AS) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        panel.grid = element_blank(), 
+        axis.line = element_line(color = "black"),
+        axis.ticks = element_line(color = "black"),
+        axis.ticks.length = unit(0.2, "cm"),
+        axis.title.x = element_text(size = 10),
+        axis.text.x = element_text(size = 8)) +
+  theme(plot.title = element_text(hjust = 0, size = 14)) +
+  annotate("text", x = max(x_limits_AS), y = min(y_limits_AS), label = "23°C", hjust = 1, vjust = 0, size = 4)
+print(plot_3C)
+
+# Plot for 27 degrees
+plot_3D <- ggplot(deg27, aes(x = AvgMass)) +
+  geom_smooth(aes(y = absolute_aerobic_scope), method = "lm", color = "#d7191c", se = TRUE, fill = "#d7191c", alpha = 0.3, size = 0.5) +
+  geom_point(aes(y = absolute_aerobic_scope), color = "darkgrey", shape = sa_ages[deg27$Age], alpha = 1) +
+  scale_x_log10(name = "Mass (g)", limits = x_limits_AS) +
+  scale_y_log10(limits = y_limits_AS) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        panel.grid = element_blank(), 
+        axis.line = element_line(color = "black"),
+        axis.ticks = element_line(color = "black"),
+        axis.ticks.length = unit(0.2, "cm"),
+        axis.title.x = element_text(size = 10),
+        axis.text.x = element_text(size = 8)) +
+  theme(plot.title = element_text(hjust = 0, size = 14)) +
+  annotate("text", x = max(x_limits_AS), y = min(y_limits_AS), label = "27°C", hjust = 1, vjust = 0, size = 4)
+print(plot_3D)
+
+# Combine the plots into a 4-panel figure
+Figure3 <- plot_3A + plot_3B + plot_3C + plot_3D + 
+  plot_layout(ncol = 4, nrow = 1)
+
+# Display the combined plot
+print(Figure3)
+
+ggsave("Figure3.tif", plot = Figure3, width = 7, height = 2.75, dpi = 300)
+```
+
+Q10 coefficients    
+
+```{r}
+# define Q10 function
+Q10 <- function(R1, R2, T1, T2){
+  (median(R2)/median(R1))^(10/(T2-T1))
+}
+
+# adjust the MO2 & aerobic scope 
+data2$adj_absoluteRMR_umolO2_h <- (data2$absoluteRMR_umolO2_h)*((0.021771/data2$AvgMass)^0.90753)
+data2$adj_absoluteMMR_umolO2_h <- (data2$absoluteMMR_umolO2_h)*((0.021771/data2$AvgMass)^0.82375)
+data2$ADJUSTED_SCOPE_ACTIVITY <- data2$adjusted_MMR - data2$adjusted_RMR
+
+deg15 <- subset(data2, Temp == "15")
+deg19 <- subset(data2, Temp == "19")
+deg23 <- subset(data2, Temp == "23")
+deg27 <- subset(data2, Temp == "27")
+
+Q10_adjRMR_15_27 <- Q10(deg15$adj_absoluteRMR_umolO2_h, deg27$adj_absoluteRMR_umolO2_h, 15, 27)
+Q10_adjMMR_15_27 <- Q10(deg15$adj_absoluteMMR_umolO2_h, deg27$adj_absoluteMMR_umolO2_h, 15, 27)
+Q10_SCOPE_15_27 <- Q10(deg15$ADJUSTED_SCOPE_ACTIVITY, deg27$ADJUSTED_SCOPE_ACTIVITY, 15, 27)
+
+print(Q10_adjRMR_15_27) # 1.96 (RMR Q10)
+print(Q10_adjMMR_15_27) # 1.74 (MMR Q10)
+print(Q10_SCOPE_15_27)  # 1.72 (scope for activity Q10)
+```
+
+OTHER: Miscellaneous 
+
+Comparing our values to Lee & Johnson (2005)
+```{r}
+# from Lee & Johnson (2005)
+# allometric function equation
+# intercept of the allometric function (g O2 g-1 d-1)
+      # 0.00094
+# slope of the allometric function 
+      # -0.157
+# temperature dependent coefficient (/deg C)
+      # 0.061
+# equation: 
+
+LeeJohnsonEQN <- function(I, M, S, C, t){
+  return(I*(M^S)*exp(C*t))
+}
+# the value returned is the specific routine metabolic rate (in g oxygen per gram body weight per day)
+# I is the intercept of the allometric function 
+# M is the mass of the fish
+# S is the slope of the allometric function 
+# exp takes the exponent "e"
+# C is the temperature dependent coefficient 
+# t is the temperature (degrees Celsius)
+
+# Their model predictions based on our data 
+mean(data2$AvgMass)
+
+deg15_prediction <- LeeJohnsonEQN(I = 0.00094, M = 0.02177138, S = -0.157, C = 0.061, t = 15) 
+deg19_prediction <- LeeJohnsonEQN(I = 0.00094, M = 0.02177138, S = -0.157, C = 0.061, t = 19) 
+deg23_prediction <- LeeJohnsonEQN(I = 0.00094, M = 0.02177138, S = -0.157, C = 0.061, t = 23) 
+deg27_prediction <- LeeJohnsonEQN(I = 0.00094, M = 0.02177138, S = -0.157, C = 0.061, t = 27) 
+
+# these predictions are in g O2 per gram per day, need to convert to our units 
+# *1000 <- converts from g to mg (O2)
+# *31.25 <- converts mg O2 into umol O2 
+# /24 <- converts per day into per hour 
+# consolidated, this is a factor of 1,302.083333 
+# then multiply by mass of the fish for absolute rates (umolO2 / h)
+
+deg15_prediction2 <- deg15_prediction * 1302.083333 * 0.02177138
+deg19_prediction2 <- deg19_prediction * 1302.083333 * 0.02177138
+deg23_prediction2 <- deg23_prediction * 1302.083333 * 0.02177138
+deg27_prediction2 <- deg27_prediction * 1302.083333 * 0.02177138
+
+print(deg15_prediction2) # 0.121
+print(deg19_prediction2) # 0.155
+print(deg23_prediction2) # 0.198
+print(deg27_prediction2) # 0.252
+
+summary(deg15$absoluteRMR_umol_O2_h) # 0.155
+summary(deg19$absoluteRMR_umol_O2_h) # 0.407
+summary(deg23$absoluteRMR_umol_O2_h) # 0.423
+summary(deg27$absoluteRMR_umol_O2_h) # 0.411
+
+0.155/0.121 # 1.28x
+0.407/0.155 # 2.63x
+0.423/0.198 # 2.14x
+0.411/0.252 # 1.63x
+```
+
+
